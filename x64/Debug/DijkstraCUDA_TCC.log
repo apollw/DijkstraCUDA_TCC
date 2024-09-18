@@ -2,7 +2,7 @@
   
   C:\Users\Leanderson\source\repos\DijkstraCUDA_TCC>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\bin\nvcc.exe" -gencode=arch=compute_52,code=\"sm_52,compute_52\" --use-local-env -ccbin "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.38.33130\bin\HostX64\x64" -x cu   -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\include"  -G   --keep-dir x64\Debug  -maxrregcount=0   --machine 64 --compile -cudart static  -g  -DWIN32 -DWIN64 -D_DEBUG -D_CONSOLE -D_MBCS -Xcompiler "/EHsc /W3 /nologo /Od /FS /Zi /RTC1 /MDd " -Xcompiler "/Fdx64\Debug\vc143.pdb" -o C:\Users\Leanderson\source\repos\DijkstraCUDA_TCC\x64\Debug\kernel.cu.obj "C:\Users\Leanderson\source\repos\DijkstraCUDA_TCC\kernel.cu" 
   kernel.cu
-  tmpxft_00005e00_00000000-7_kernel.cudafe1.cpp
+  tmpxft_00003efc_00000000-7_kernel.cudafe1.cpp
      Criando biblioteca C:\Users\Leanderson\source\repos\DijkstraCUDA_TCC\x64\Debug\DijkstraCUDA_TCC.lib e objeto C:\Users\Leanderson\source\repos\DijkstraCUDA_TCC\x64\Debug\DijkstraCUDA_TCC.exp
 LINK : warning LNK4098: defaultlib 'LIBCMT' conflita com uso de outras bibliotecas; use /NODEFAULTLIB:library
   DijkstraCUDA_TCC.vcxproj -> C:\Users\Leanderson\source\repos\DijkstraCUDA_TCC\x64\Debug\DijkstraCUDA_TCC.exe

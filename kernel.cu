@@ -7,7 +7,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#define NUM_VERTICES 16 /*256*/ /*512*/ /*1024*/ /*2048*/ /*4096*/ /*8192*/ /*16384*/
+#define NUM_VERTICES /*16*/ 256 /*512*/ /*1024*/ /*2048*/ /*4096*/ /*8192*/ /*16384*/
 #define MIN_PESO 1
 #define MAX_PESO 20
 
@@ -114,23 +114,26 @@ struct Grafo* carregarGrafo(const char* nomeArquivo) {
 }
 
 // Kernel para encontrar o vértice não visitado com a menor distância local
-__global__ void findMinDistance(int* d, bool* visited, int* minDistIndex, int n) {
+__global__ void findMinDistance(int* d, bool* visited, int* minDistIndex, int* minDistValue, int n) {
 	int tid = threadIdx.x + blockIdx.x * blockDim.x;
 	if (tid < n && !visited[tid]) {
-		if (d[tid] < atomicMin(minDistIndex, d[tid])) {
+		int dist = d[tid];
+		atomicMin(minDistValue, dist);
+		if (dist == *minDistValue) {
 			*minDistIndex = tid;
 		}
 	}
 }
 
 // Função para encontrar o próximo vértice a ser visitado
-int findNextVertex(int* d_dev, bool* visited_dev, int* minDistIndex_dev, int n) {
-	int minDistIndex = INT_MAX;
+int findNextVertex(int* d_dev, bool* visited_dev, int* minDistIndex_dev, int* minDistValue_dev, int n) {
+	int minDistIndex = -1;
+	int minDistValue = INT_MAX;
 
-	cudaMemcpy(minDistIndex_dev, &minDistIndex, sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(minDistValue_dev, &minDistValue, sizeof(int), cudaMemcpyHostToDevice);
 
 	int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
-	findMinDistance << <numBlocks, BLOCK_SIZE >> > (d_dev, visited_dev, minDistIndex_dev, n);
+	findMinDistance << <numBlocks, BLOCK_SIZE >> > (d_dev, visited_dev, minDistIndex_dev, minDistValue_dev, n);
 
 	cudaMemcpy(&minDistIndex, minDistIndex_dev, sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -152,9 +155,11 @@ void dijkstra_CUDA(struct Grafo* grafo, int inicio) {
 	int* d_dev;
 	bool* visited_dev;
 	int* minDistIndex_dev;
+	int* minDistValue_dev;
 	cudaMalloc((void**)&d_dev, NUM_VERTICES * sizeof(int));
 	cudaMalloc((void**)&visited_dev, NUM_VERTICES * sizeof(bool));
 	cudaMalloc((void**)&minDistIndex_dev, sizeof(int));
+	cudaMalloc((void**)&minDistValue_dev, sizeof(int));
 
 	cudaMemcpy(d_dev, distancias, NUM_VERTICES * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(visited_dev, visitados, NUM_VERTICES * sizeof(bool), cudaMemcpyHostToDevice);
@@ -163,10 +168,11 @@ void dijkstra_CUDA(struct Grafo* grafo, int inicio) {
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
 
-	//Início da Contagem de Tempo
+	// Início da Contagem de Tempo
 	cudaEventRecord(start);
 	for (int count = 0; count < NUM_VERTICES - 1; count++) {
-		int u = findNextVertex(d_dev, visited_dev, minDistIndex_dev, NUM_VERTICES);
+		int u = findNextVertex(d_dev, visited_dev, minDistIndex_dev, minDistValue_dev, NUM_VERTICES);
+		if (u == -1) break;
 		visitados[u] = true;
 
 		struct No* v = grafo->cabeca[u];
@@ -178,6 +184,9 @@ void dijkstra_CUDA(struct Grafo* grafo, int inicio) {
 			}
 			v = v->proxNo;
 		}
+
+		cudaMemcpy(d_dev, distancias, NUM_VERTICES * sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy(visited_dev, visitados, NUM_VERTICES * sizeof(bool), cudaMemcpyHostToDevice);
 	}
 
 	cudaEventRecord(stop);
@@ -190,11 +199,12 @@ void dijkstra_CUDA(struct Grafo* grafo, int inicio) {
 
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
-	//Fim da contagem de tempo
+	// Fim da contagem de tempo
 
 	cudaFree(d_dev);
 	cudaFree(visited_dev);
 	cudaFree(minDistIndex_dev);
+	cudaFree(minDistValue_dev);
 
 	printf("\nDistancias minimas a partir do vertice %d:\n", inicio);
 	for (int i = 0; i < NUM_VERTICES; i++) {
@@ -202,15 +212,16 @@ void dijkstra_CUDA(struct Grafo* grafo, int inicio) {
 	}
 }
 
+
 //FUNÇÃO PRINCIPAL
 int main(void) {
 
 	struct Grafo* grafo = criarGrafo(NUM_VERTICES);
 	int numArestas = 0;
-	int vertice_de_entrada = 4;
+	int vertice_de_entrada = 0;
 
-	const char* grafo16    = "D:\\Grafos\\grafo.txt";
-	//const char* grafo256 = "D:\\Grafos\\grafo256.txt";
+	//const char* grafo16    = "D:\\Grafos\\grafo.txt";
+	const char* grafo256 = "D:\\Grafos\\grafo256.txt";
 	//const char* grafo512   = "D:\\Grafos\\grafo512.txt";
 	//const char* grafo1024  = "D:\\Grafos\\grafo1024.txt";
 	//const char* grafo2048  = "D:\\Grafos\\grafo2048.txt";
@@ -228,13 +239,13 @@ int main(void) {
 	printf("Numero de Vertices = %d\n", NUM_VERTICES);
 	printf("Numero de Arestas = %d\n", numArestas);
 
-	grafo = carregarGrafo(grafo16);
+	grafo = carregarGrafo(grafo256);
 
 	//imprimirGrafo(grafo);
 
 	//EXECUÇÃO DO ALGORITMO DE DIJKSTRA PARALELO
 	for (int m = 0; m < 30; m++)
-		dijkstra_CUDA(grafo, vertice_de_entrada);
+		dijkstra_CUDA(grafo, vertice_de_entrada++);
 
 	free(grafo);
 
